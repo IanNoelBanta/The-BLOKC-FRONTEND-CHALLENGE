@@ -1,113 +1,146 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
+import { BrowserProvider } from "ethers";
 
 export default function Home() {
+  const [connected, setConnected] = useState(false);
+  const [walletKey, setWalletKey] = useState("");
+  const [nativeBalance, setNativeBalance] = useState("");
+  const [tokenBalance, setTokenBalance] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [nftCount, setNftCount] = useState(0);
+  const [nftNames, setNftNames] = useState([]);
+  const [userWallet, setUserWallet] = useState("");
+
+  const connectWallet = async () => {
+    const { ethereum } = window as any;
+    const accounts = await ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    setWalletKey(accounts[0]);
+    setConnected(true);
+
+    getData();
+  };
+
+  const getData = async () => {
+    const { ethereum } = window as any;
+    const provider = new BrowserProvider(ethereum);
+    const signer = await provider.getSigner();
+    const userAddress = signer.address;
+    setUserWallet(userAddress);
+
+    try {
+      setLoading(true);
+
+      const balance = await fetch(
+        `https://ian-the-blokc-backend-challenge.onrender.com/balance/${userAddress}`
+      );
+      if (!balance.ok) {
+        throw new Error("Failed to fetch balance");
+      }
+
+      const dataBalance = await balance.json();
+      const tokens = dataBalance["tokens"].map((token: string) => {
+        return token;
+      });
+
+      setNativeBalance(dataBalance["native"]);
+      setTokenBalance(tokens);
+
+      const NFTs = await fetch(
+        `https://ian-the-blokc-backend-challenge.onrender.com/nft/${userAddress}`
+      );
+      if (!balance.ok) {
+        throw new Error("Failed to fetch NFTs");
+      }
+
+      const dataNFTs = await NFTs.json();
+      const nftNames = dataNFTs
+        .map((nft: any) => {
+          return nft.metadata;
+        })
+        .map((metadata: any) => {
+          return metadata.name;
+        });
+
+      setNftCount(dataNFTs.length);
+      setNftNames(nftNames);
+
+      setLoading(false);
+      console.log("Successfully Fetched All Data!");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="min-h-screen flex items-center flex flex-col items-center justify-center">
+      {connected ? (
+        loading ? (
+          <>loading...</>
+        ) : (
+          <div className="items-center flex flex-col space-y-5">
+            <div>
+              <h1 className="text-4xl font-bold mb-8 flex items-center flex flex-col">
+                {userWallet}
+              </h1>
+            </div>
+
+            <div className="space-x-40 flex justify-center">
+              <div>
+                <h1 className="text-4xl font-bold mb-8 flex items-center flex flex-col">
+                  Balance
+                </h1>
+                <h2 className="text-2xl mb-4">
+                  Native Balance: {nativeBalance}
+                </h2>
+                <h2 className="text-2xl mb-4">Token Balances: </h2>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  <ul>
+                    {tokenBalance.map((token, index) => (
+                      <li key={index}>- {token}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div>
+                <h1 className="text-4xl font-bold mb-8 flex items-center flex flex-col">
+                  NFTs
+                </h1>
+                <h2 className="text-2xl mb-4">NFT Count: {nftCount}</h2>
+                <h2 className="text-2xl mb-4">NFT Names: </h2>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  <ul>
+                    {nftNames.map((name, index) => (
+                      <li key={index}>- {name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={() => setConnected(false)}
+            >
+              Home
+            </button>
+          </div>
+        )
+      ) : (
+        <>
+          <h1 className="text-4xl font-bold mb-8">Connect with MetaMask</h1>
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={connectWallet}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+            Connect with MetaMask
+          </button>
+        </>
+      )}
     </main>
   );
 }
